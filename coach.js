@@ -1,5 +1,6 @@
 /* coach.js
-   Isolated language coach — JC STRICT STRUCTURE VERSION
+   Coaching-first language judge (JC)
+   RED = block, AMBER = coach, GREEN = accept
 */
 
 const Coach = (() => {
@@ -9,93 +10,117 @@ const Coach = (() => {
     const p = (prompt || "").toLowerCase();
 
     const result = {
+      level: "green",          // green | amber | red
       focusTag: "detail",
       focusLabel: "Add one more detail",
-      severity: 1,
       message: "",
       passed: true
     };
 
-    // --- No answer ---
+    // --------------------
+    // Universal RED rules
+    // --------------------
     if (!a) {
-      result.focusTag = "blank";
-      result.focusLabel = "Write something";
-      result.severity = 5;
-      result.passed = false;
-      result.message = "No answer given.";
-      return result;
+      return red("blank", "Write something", "No answer given.");
     }
 
     const wc = a.split(/\s+/).length;
-
-    // --- Too short ---
     if (wc < 3) {
-      result.focusTag = "too_short";
-      result.focusLabel = "Too short";
-      result.severity = 4;
-      result.passed = false;
-      result.message = "Too short to score — add a verb.";
-      return result;
+      return red("too_short", "Too short", "Too short to score — add a verb.");
     }
 
-    // ==============================
-    // Spanish-specific checks
-    // ==============================
+    // ====================
+    // Spanish
+    // ====================
     if (lang === "es") {
 
-      // 🔴 HARD STOP: broken GUSTAR frame (must come FIRST)
+      // 🔴 RED: broken gustar frame
       if (/\b(gusta|gustan)\b/i.test(a) && !/\b(me|te|le|nos|os|les)\b/i.test(a)) {
-        result.focusTag = "verb_frame";
-        result.focusLabel = "Broken verb frame";
-        result.severity = 5;
-        result.passed = false;
-        result.message = "With gusta / gustan you MUST use me / le / nos (me gustan…).";
-        return result;
+        return red(
+          "verb_frame",
+          "Broken verb frame",
+          "With gusta / gustan you need me / le / nos (me gustan…)."
+        );
       }
 
-      // --- Missing verb (noun/adjective phrases) ---
+      // Detect verbs / adjectives
       const hasVerb =
-        /\b(es|está|son|soy|eres|tiene|tengo|hay|vive|juega|come|va)\b/i
+        /\b(es|está|son|soy|eres|tiene|tengo|hay|vive|juega|come|va|gusta|gustan)\b/i
           .test(a);
 
-      const hasAdjective =
-        /\b(alto|alta|altos|altas|simpatico|simpática|simpaticos|simpáticas|grande|pequeño|pequeña|bonito|bonita|divertido|divertida)\b/i
+      const hasAdj =
+        /\b(alto|alta|altos|altas|simpatico|simpática|grande|pequeño|bonito|divertido)\b/i
           .test(a);
 
-      if (hasAdjective && !hasVerb) {
-        result.focusTag = "missing_verb";
-        result.focusLabel = "Missing verb";
-        result.severity = 5;
-        result.passed = false;
-        result.message = "Descriptions need a verb (es / tiene / hay…).";
-        return result;
+      // 🔴 RED: adjective phrase with no verb
+      if (hasAdj && !hasVerb) {
+        return red(
+          "missing_verb",
+          "Missing verb",
+          "Descriptions need a verb (es / tiene / hay…)."
+        );
       }
 
-      // --- Wrong person (he/she vs you) ---
-      if (p.includes("friend") && /\b(eres|tienes|estás)\b/i.test(a)) {
-        result.focusTag = "person";
-        result.focusLabel = "Wrong person (eres → es)";
-        result.severity = 4;
-        result.passed = false;
-        result.message = "Prompt is about him/her, not you.";
-        return result;
+      // 🟠 AMBER: person mismatch (noun subject + tú-verb)
+      if (
+        /\b(mi amigo|mi amiga|mi madre|mi padre|el chico|la chica)\b/i.test(a) &&
+        /\b(tienes|eres|estás|comes|vives|juegas|vas)\b/i.test(a)
+      ) {
+        return amber(
+          "verb_person",
+          "Verb person",
+          "Verb does not match the subject (mi amigo → es / tiene…)."
+        );
+      }
+
+      // 🟠 AMBER: agreement
+      if (/\bes\s+altos\b/i.test(a)) {
+        return amber(
+          "agreement",
+          "Agreement",
+          "Adjective must agree (es alto)."
+        );
       }
     }
 
-    // --- Acceptable answer ---
-    result.message = "This would score. Add one more detail to improve it.";
+    // --------------------
+    // GREEN fallback
+    // --------------------
+    result.message = "This scores. Add one more detail to improve it.";
     return result;
   }
 
+  function red(tag, label, msg) {
+    return {
+      level: "red",
+      focusTag: tag,
+      focusLabel: label,
+      message: msg,
+      passed: false
+    };
+  }
+
+  function amber(tag, label, msg) {
+    return {
+      level: "amber",
+      focusTag: tag,
+      focusLabel: label,
+      message: msg,
+      passed: true
+    };
+  }
+
   function coachSpeak(r) {
-    if (!r.passed) {
-      return `Standards. Today’s focus: ${r.focusLabel}.`;
+    if (r.level === "red") {
+      return `Stop. Today’s focus: ${r.focusLabel}.`;
+    }
+    if (r.level === "amber") {
+      return `This scores — but focus on ${r.focusLabel}.`;
     }
     return `Good. That scores. Next time, add one detail.`;
   }
 
-  return {
-    analyse,
-    coachSpeak
-  };
+  return { analyse, coachSpeak };
 })();
+
+
