@@ -1,6 +1,6 @@
 /* coach.js
-   Isolated language coach
-   No DOM. No API. Always returns something.
+   Isolated language coach — SAFE VERSION
+   Always returns a verdict
 */
 
 const Coach = (() => {
@@ -9,7 +9,7 @@ const Coach = (() => {
     const a = (answer || "").trim();
     const p = (prompt || "").toLowerCase();
 
-    // default result (never empty)
+    // Default verdict (never empty)
     const result = {
       focusTag: "detail",
       focusLabel: "Add one more detail",
@@ -18,6 +18,7 @@ const Coach = (() => {
       passed: true
     };
 
+    // --- No answer ---
     if (!a) {
       result.focusTag = "blank";
       result.focusLabel = "Write something";
@@ -29,32 +30,40 @@ const Coach = (() => {
 
     const wc = a.split(/\s+/).length;
 
-    // language-agnostic short answer
+    // --- Too short (absolute beginner guardrail) ---
     if (wc < 3) {
       result.focusTag = "too_short";
       result.focusLabel = "Too short";
-      result.severity = 3;
+      result.severity = 4;
       result.passed = false;
-      result.message = "Too short to score well.";
+      result.message = "Too short to score — add a verb.";
       return result;
     }
 
-    // Spanish-specific checks (kept deliberately minimal)
+    // ==============================
+    // Spanish-specific checks
+    // ==============================
     if (lang === "es") {
-      // --- Missing verb (very common beginner error) ---
-const hasVerb =
-  /\b(es|está|son|soy|eres|tiene|tengo|hay|me gusta|vive|juega|come|va)\b/i
-    .test(a);
 
-if (!hasVerb) {
-  result.focusTag = "missing_verb";
-  result.focusLabel = "Missing verb";
-  result.severity = 5;
-  result.passed = false;
-  result.message = "You need a verb to score (es / tiene / hay / me gusta…).";
-  return result;
-}
- 
+      // --- Missing verb (noun/adjective phrases) ---
+      const hasVerb =
+        /\b(es|está|son|soy|eres|tiene|tengo|hay|me gusta|vive|juega|come|va)\b/i
+          .test(a);
+
+      const hasAdjective =
+        /\b(alto|alta|altos|altas|simpatico|simpática|simpaticos|simpáticas|grande|pequeño|pequeña|bonito|bonita|divertido|divertida)\b/i
+          .test(a);
+
+      if (hasAdjective && !hasVerb) {
+        result.focusTag = "missing_verb";
+        result.focusLabel = "Missing verb";
+        result.severity = 5;
+        result.passed = false;
+        result.message = "Descriptions need a verb (es / tiene / hay…).";
+        return result;
+      }
+
+      // --- Wrong person (he/she vs you) ---
       if (p.includes("friend") && /\b(eres|tienes|estás)\b/i.test(a)) {
         result.focusTag = "person";
         result.focusLabel = "Wrong person (eres → es)";
@@ -63,27 +72,10 @@ if (!hasVerb) {
         result.message = "Prompt is about him/her, not you.";
         return result;
       }
-
-      if (/\byo\s+es\b/i.test(a)) {
-        result.focusTag = "verb";
-        result.focusLabel = "Verb form";
-        result.severity = 4;
-        result.passed = false;
-        result.message = "yo es → yo soy";
-        return result;
-      }
-
-      if (/[aeiou]$/i.test(a) && !/[.!?]$/.test(a)) {
-        result.focusTag = "polish";
-        result.focusLabel = "Polish";
-        result.severity = 1;
-        result.message = "Sentence is fine — just polish it.";
-        return result;
-      }
     }
 
-    // otherwise: acceptable
-    result.message = "This would score. One more detail would improve it.";
+    // --- Acceptable answer ---
+    result.message = "This would score. Add one more detail to improve it.";
     return result;
   }
 
@@ -99,4 +91,3 @@ if (!hasVerb) {
     coachSpeak
   };
 })();
-
