@@ -41,6 +41,20 @@ const Coach = (() => {
 
     // Spanish-specific checks (kept deliberately minimal)
     if (lang === "es") {
+      // --- Missing verb (very common beginner error) ---
+const hasVerb =
+  /\b(es|está|son|soy|eres|tiene|tengo|hay|me gusta|vive|juega|come|va)\b/i
+    .test(a);
+
+if (!hasVerb) {
+  result.focusTag = "missing_verb";
+  result.focusLabel = "Missing verb";
+  result.severity = 5;
+  result.passed = false;
+  result.message = "You need a verb to score (es / tiene / hay / me gusta…).";
+  return result;
+}
+ 
       if (p.includes("friend") && /\b(eres|tienes|estás)\b/i.test(a)) {
         result.focusTag = "person";
         result.focusLabel = "Wrong person (eres → es)";
