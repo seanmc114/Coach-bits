@@ -1,6 +1,5 @@
 /* coach.js
-   Isolated language coach — STABLE JC VERSION
-   Enforces structure, not perfection
+   Isolated language coach — JC STRICT STRUCTURE VERSION
 */
 
 const Coach = (() => {
@@ -9,7 +8,6 @@ const Coach = (() => {
     const a = (answer || "").trim();
     const p = (prompt || "").toLowerCase();
 
-    // Default verdict (never empty)
     const result = {
       focusTag: "detail",
       focusLabel: "Add one more detail",
@@ -45,9 +43,19 @@ const Coach = (() => {
     // ==============================
     if (lang === "es") {
 
+      // 🔴 HARD STOP: broken GUSTAR frame (must come FIRST)
+      if (/\b(gusta|gustan)\b/i.test(a) && !/\b(me|te|le|nos|os|les)\b/i.test(a)) {
+        result.focusTag = "verb_frame";
+        result.focusLabel = "Broken verb frame";
+        result.severity = 5;
+        result.passed = false;
+        result.message = "With gusta / gustan you MUST use me / le / nos (me gustan…).";
+        return result;
+      }
+
       // --- Missing verb (noun/adjective phrases) ---
       const hasVerb =
-        /\b(es|está|son|soy|eres|tiene|tengo|hay|me gusta|gusta|gustan|vive|juega|come|va)\b/i
+        /\b(es|está|son|soy|eres|tiene|tengo|hay|vive|juega|come|va)\b/i
           .test(a);
 
       const hasAdjective =
@@ -60,16 +68,6 @@ const Coach = (() => {
         result.severity = 5;
         result.passed = false;
         result.message = "Descriptions need a verb (es / tiene / hay…).";
-        return result;
-      }
-
-      // --- Broken gustar frame ---
-      if (/\b(gusta|gustan)\b/i.test(a) && !/\b(me|te|le|nos|os|les)\b/i.test(a)) {
-        result.focusTag = "verb_frame";
-        result.focusLabel = "Broken verb frame";
-        result.severity = 5;
-        result.passed = false;
-        result.message = "With gusta / gustan you need me / le / nos (me gustan…).";
         return result;
       }
 
