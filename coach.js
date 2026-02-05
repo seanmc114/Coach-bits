@@ -1,6 +1,6 @@
 /* coach.js
-   Isolated language coach — SAFE VERSION
-   Always returns a verdict
+   Isolated language coach — STABLE JC VERSION
+   Enforces structure, not perfection
 */
 
 const Coach = (() => {
@@ -30,7 +30,7 @@ const Coach = (() => {
 
     const wc = a.split(/\s+/).length;
 
-    // --- Too short (absolute beginner guardrail) ---
+    // --- Too short ---
     if (wc < 3) {
       result.focusTag = "too_short";
       result.focusLabel = "Too short";
@@ -47,7 +47,7 @@ const Coach = (() => {
 
       // --- Missing verb (noun/adjective phrases) ---
       const hasVerb =
-        /\b(es|está|son|soy|eres|tiene|tengo|hay|me gusta|vive|juega|come|va)\b/i
+        /\b(es|está|son|soy|eres|tiene|tengo|hay|me gusta|gusta|gustan|vive|juega|come|va)\b/i
           .test(a);
 
       const hasAdjective =
@@ -60,6 +60,16 @@ const Coach = (() => {
         result.severity = 5;
         result.passed = false;
         result.message = "Descriptions need a verb (es / tiene / hay…).";
+        return result;
+      }
+
+      // --- Broken gustar frame ---
+      if (/\b(gusta|gustan)\b/i.test(a) && !/\b(me|te|le|nos|os|les)\b/i.test(a)) {
+        result.focusTag = "verb_frame";
+        result.focusLabel = "Broken verb frame";
+        result.severity = 5;
+        result.passed = false;
+        result.message = "With gusta / gustan you need me / le / nos (me gustan…).";
         return result;
       }
 
