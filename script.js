@@ -1,4 +1,4 @@
-// script.js — FINAL JC COACH (TURBO HINTS)
+// script.js — FINAL JC COACH (CREDIBLE TURBO VERSION)
 
 const AI_URL = "https://loops-ai-coach.seansynge.workers.dev/api/correct";
 
@@ -6,24 +6,24 @@ const AI_URL = "https://loops-ai-coach.seansynge.workers.dev/api/correct";
 // MINIMAL HUMAN GUARDRAIL
 // ------------------------------
 function hasVerbLikeWord(text) {
-  return /\b(es|está|son|soy|eres|tiene|tengo|hay|va|vive|juega|come|trabaja)\b/i
+  return /\b(es|está|son|soy|eres|tiene|tengo|hay|va|vive|juega|come|trabaja|gusta)\b/i
     .test(text);
 }
 
 // ------------------------------
-// TURBO NEXT-STEP PLAYBOOK (SPANISH)
+// TURBO NEXT-STEP PLAYBOOK
 // ------------------------------
 const NEXT_STEP = {
   "Missing verb": "Add a verb — try **es** (he is) or **tiene** (he has).",
   "Task relevance": "Describe the person — try **es + adjective**.",
   "Agreement": "Match the adjective — **alto → alta**, **simpático → simpática**.",
-  "Verb form": "Use **es** (he is), not **eres** (you are).",
+  "Verb form": "Check the verb — use **gusta** (he likes), not **gustas**.",
   "Word order": "Start with **Mi amigo es…**",
-  "Accuracy": "Polish it — add accents (e.g. **simpatico → simpático**)."
+  "Accuracy": "Now polish — add accents if you can."
 };
 
 // ------------------------------
-// AI CLASSIFIER WITH JC RUBRIC
+// AI CLASSIFIER
 // ------------------------------
 async function classifyAnswer(payload) {
   try {
@@ -32,12 +32,9 @@ async function classifyAnswer(payload) {
 
     payload.instructions = `
 You are a Junior Cycle language examiner.
-
-Apply this marking scheme (total 10 marks).
-
-Name agreement, verb form, or word order explicitly if they are the main issue.
-Choose ONE focus only.
-Be decisive.
+If the main issue is verb form (person/ending), label it "Verb form".
+If agreement is the issue, label it "Agreement".
+Choose ONE dominant focus.
 Return JSON only.
 `;
 
@@ -56,18 +53,22 @@ Return JSON only.
     return {
       verdict: "amber",
       scores: { structure: 2, relevance: 1, accuracy: 1 },
-      label: "Task relevance",
-      rationale: "The sentence does not really describe the person."
+      label: "Verb form",
+      rationale: "Incorrect verb form."
     };
   }
 }
 
 // ------------------------------
-// COACH VOICE
+// COACH VOICE (SCORE-AWARE)
 // ------------------------------
-function coachSpeak(verdict, label) {
-  if (verdict === "red") return `Stop. Today’s focus: ${label}.`;
-  if (verdict === "amber") return `This scores — but focus on ${label}.`;
+function coachSpeak(total, label) {
+  if (total <= 3) {
+    return `Stop. Fix the ${label} and go again.`;
+  }
+  if (total <= 6) {
+    return `This scores, but the ${label} is holding it back.`;
+  }
   return "Good. That scores. Push it to the top band.";
 }
 
@@ -86,7 +87,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const prompt = document.getElementById("prompt").value;
     const answer = document.getElementById("answer").value;
-    const langCode = document.getElementById("lang").value;
 
     if (!hasVerbLikeWord(answer)) {
       out.classList.remove("hidden");
@@ -100,18 +100,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const language =
-      langCode === "es" ? "Spanish" :
-      langCode === "fr" ? "French" : "German";
-
-    const result = await classifyAnswer({
-      mode: "classifier",
-      language,
-      level: "Junior Cycle",
-      task: "short description",
-      prompt,
-      answer
-    });
+    const result = await classifyAnswer({ prompt, answer });
 
     let s = result.scores;
     let total = s.structure + s.relevance + s.accuracy;
@@ -126,8 +115,9 @@ document.addEventListener("DOMContentLoaded", () => {
     out.innerHTML = `
       <div class="score">Score: ${total} / 10</div>
       <div class="focus">Focus: ${result.label}</div>
-      <div>${coachSpeak(result.verdict, result.label)}</div>
-      <div><br><strong>Try this next:</strong><br>${next}</div>
+      <div>${coachSpeak(total, result.label)}</div>
+      <div><br><strong>Do this:</strong><br>${next}</div>
+      <div><br><em>${result.rationale}</em></div>
     `;
 
     runBtn.disabled = false;
