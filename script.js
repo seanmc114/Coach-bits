@@ -1,4 +1,4 @@
-// script.js — FULL SANDBOX VERSION (NO CODING REQUIRED)
+// script.js — SANDBOX VERSION (TIGHT CLASSIFIER PROMPT)
 
 // ------------------------------
 // AI CLASSIFIER (SAFE)
@@ -9,6 +9,23 @@ async function classifyAnswer(payload) {
   try {
     const controller = new AbortController();
     setTimeout(() => controller.abort(), 4000);
+
+    // 🔑 STRONG, EXPLICIT CLASSIFIER INSTRUCTIONS
+    payload.instructions = `
+You are a strict school language examiner.
+
+Decide ONE dominant issue only.
+
+Use these rules:
+- If there is NO VERB at all → verdict MUST be "red", label "Missing verb".
+- If the answer does NOT address the task (e.g. name instead of description)
+  → verdict "amber", label "Task relevance".
+- If meaning is unclear or fragmentary → verdict "red".
+- If meaning is clear but inaccurate → verdict "amber".
+- Do NOT default to generic accuracy if a clearer label applies.
+
+Return JSON only.
+`;
 
     const res = await fetch(AI_URL, {
       method: "POST",
@@ -29,7 +46,6 @@ async function classifyAnswer(payload) {
     return json;
 
   } catch (e) {
-    // SAFE FALLBACK — NEVER BREAK
     return {
       verdict: "amber",
       error_code: "accuracy",
