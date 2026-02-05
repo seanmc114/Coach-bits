@@ -1,4 +1,4 @@
-// script.js — FINAL JC COACH (WITH LOW-BAND CAP APPLIED)
+// script.js — FINAL JC COACH (WITH CAP + FOCUS + REPLAY NUDGE)
 
 const AI_URL = "https://loops-ai-coach.seansynge.workers.dev/api/correct";
 
@@ -9,6 +9,18 @@ function hasVerbLikeWord(text) {
   return /\b(es|está|son|soy|eres|tiene|tengo|hay|va|vive|juega|come|trabaja)\b/i
     .test(text);
 }
+
+// ------------------------------
+// COACH NEXT-STEP PLAYBOOK
+// ------------------------------
+const NEXT_STEP = {
+  "Missing verb": "Add a verb — say what the person *is* or *has*.",
+  "Task relevance": "Say something *about the person*, not yourself or activities.",
+  "Agreement": "Check that adjectives match the noun (gender and number).",
+  "Verb form": "Check the verb ending — who is doing the action?",
+  "Word order": "Put the subject first, then the verb, then the detail.",
+  "Accuracy": "Polish it — check spelling and accents."
+};
 
 // ------------------------------
 // AI CLASSIFIER WITH JC RUBRIC
@@ -44,7 +56,8 @@ ACCURACY (0–3):
 Rules:
 • One short correct sentence cannot score above 7/10.
 • Missing accents prevent a perfect score.
-• Choose ONE focus: the lowest category.
+• If agreement, verb form, or word order is the main issue, name it explicitly.
+• Choose ONE focus: the lowest category or dominant accuracy issue.
 • Be decisive, not vague.
 
 Return JSON only in this format:
@@ -115,6 +128,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="breakdown">Structure: 0/4 • Relevance: 0/3 • Accuracy: 0/3</div>
         <div class="focus">Focus: Missing verb</div>
         <div>Coach says:<br>Stop. A description needs a verb.</div>
+        <div><br><strong>Try this next:</strong><br>${NEXT_STEP["Missing verb"]}</div>
       `;
       runBtn.disabled = false;
       runBtn.innerText = "Ask coach";
@@ -135,16 +149,14 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     let s = result.scores;
-
-    // ------------------------------
-    // 🔒 LOW-BAND CAP (KEY FIX)
-    // ------------------------------
     let total = s.structure + s.relevance + s.accuracy;
 
-    // If barely relevant AND weak structure, cap at 4
+    // 🔒 LOW-BAND CAP
     if (s.relevance <= 1 && s.structure <= 2) {
       total = Math.min(total, 4);
     }
+
+    const next = NEXT_STEP[result.label] || NEXT_STEP["Accuracy"];
 
     out.classList.remove("hidden");
     out.innerHTML = `
@@ -156,6 +168,7 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
       <div class="focus">Focus: ${result.label}</div>
       <div>Coach says:<br>${coachSpeak(result.verdict, result.label)}</div>
+      <div><br><strong>Try this next:</strong><br>${next}</div>
       <div><br>Why:<br>${result.rationale}</div>
     `;
 
