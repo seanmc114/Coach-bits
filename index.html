@@ -2,15 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Don Diego – Coach Sandbox</title>
+  <title>Don Diego Multilingual Coach</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
 
 <main class="wrap">
-  <h1>Don Diego – Coach Sandbox</h1>
-  <p class="sub">Junior Cycle style • examiner feedback</p>
+  <h1>Don Diego – Multilingual Coach Sandbox</h1>
+  <p class="sub">Practice descriptions in Spanish, French, German, or Gaeilge</p>
+
+  <label>
+    Language
+    <select id="lang">
+      <option value="es">Spanish</option>
+      <option value="fr">French</option>
+      <option value="de">German</option>
+      <option value="ga">Gaeilge</option>
+    </select>
+  </label>
 
   <label>
     Prompt
@@ -19,16 +29,7 @@
 
   <label>
     Learner answer
-    <textarea id="answer" rows="3">Mi amigo es alto y simpatico</textarea>
-  </label>
-
-  <label>
-    Language
-    <select id="lang">
-      <option value="es">Spanish</option>
-      <option value="fr">French</option>
-      <option value="de">German</option>
-    </select>
+    <textarea id="answer" rows="3" placeholder="Type your answer…"></textarea>
   </label>
 
   <button id="runBtn">Ask coach</button>
