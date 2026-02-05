@@ -1,12 +1,12 @@
-// script.js — FINAL JC COACH SANDBOX (SCORING + CLASSIFIER)
+// script.js — FINAL JC COACH (WITH LOW-BAND CAP APPLIED)
 
 const AI_URL = "https://loops-ai-coach.seansynge.workers.dev/api/correct";
 
 // ------------------------------
-// HUMAN CREDIBILITY GUARDRAIL
+// MINIMAL HUMAN GUARDRAIL
 // ------------------------------
 function hasVerbLikeWord(text) {
-  return /\b(es|está|son|soy|eres|tiene|tengo|hay|me|te|le|nos|os|les|va|viene|juega|come|trabaja)\b/i
+  return /\b(es|está|son|soy|eres|tiene|tengo|hay|va|vive|juega|come|trabaja)\b/i
     .test(text);
 }
 
@@ -21,16 +21,31 @@ async function classifyAnswer(payload) {
     payload.instructions = `
 You are a Junior Cycle language examiner.
 
-Apply this marking scheme (out of 10):
-• Structure (0–4): verb present, sentence usable
-• Relevance (0–3): answers the task
-• Accuracy (0–3): grammar, agreement, spelling
+Apply this marking scheme (total 10 marks):
+
+STRUCTURE (0–4):
+• 4: clear sentence, appropriate verb for task
+• 3: verb present, sentence works but thin
+• 2: verb present but weak or barely relevant
+• 0–1: fragment or unusable
+
+RELEVANCE (0–3):
+• 3: answers the task with more than one idea OR a qualifier
+• 2: answers the task briefly
+• 1: partly on task
+• 0: off task
+
+ACCURACY (0–3):
+• 3: accurate, including accents
+• 2: minor issues (agreement or missing accents)
+• 1: repeated errors but meaning clear
+• 0: accuracy prevents meaning
 
 Rules:
-- If NO verb → Structure = 0, verdict = red, label "Missing verb".
-- If off-task → low relevance.
-- Do not be vague.
-- Choose ONE focus: lowest scoring category.
+• One short correct sentence cannot score above 7/10.
+• Missing accents prevent a perfect score.
+• Choose ONE focus: the lowest category.
+• Be decisive, not vague.
 
 Return JSON only in this format:
 {
@@ -50,16 +65,14 @@ Return JSON only in this format:
 
     const text = await res.text();
     if (!res.ok) throw new Error(text);
-
     return JSON.parse(text);
 
   } catch {
-    // SAFE FALLBACK
     return {
       verdict: "amber",
-      scores: { structure: 2, relevance: 1, accuracy: 2 },
-      label: "Accuracy",
-      rationale: "Some accuracy issues are costing marks."
+      scores: { structure: 2, relevance: 1, accuracy: 1 },
+      label: "Task relevance",
+      rationale: "The sentence does not really describe the person."
     };
   }
 }
@@ -74,7 +87,7 @@ function coachSpeak(verdict, label) {
   if (verdict === "amber") {
     return `This scores — but focus on ${label}.`;
   }
-  return "Good. That scores. Add one more detail.";
+  return "Good. That scores. Push it to the top band.";
 }
 
 // ------------------------------
@@ -101,7 +114,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="score">Score: 0 / 10</div>
         <div class="breakdown">Structure: 0/4 • Relevance: 0/3 • Accuracy: 0/3</div>
         <div class="focus">Focus: Missing verb</div>
-        <div>Coach says:<br>Stop. A description needs a verb to score.</div>
+        <div>Coach says:<br>Stop. A description needs a verb.</div>
       `;
       runBtn.disabled = false;
       runBtn.innerText = "Ask coach";
@@ -121,8 +134,17 @@ document.addEventListener("DOMContentLoaded", () => {
       answer
     });
 
-    const s = result.scores;
-    const total = s.structure + s.relevance + s.accuracy;
+    let s = result.scores;
+
+    // ------------------------------
+    // 🔒 LOW-BAND CAP (KEY FIX)
+    // ------------------------------
+    let total = s.structure + s.relevance + s.accuracy;
+
+    // If barely relevant AND weak structure, cap at 4
+    if (s.relevance <= 1 && s.structure <= 2) {
+      total = Math.min(total, 4);
+    }
 
     out.classList.remove("hidden");
     out.innerHTML = `
