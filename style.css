@@ -1,202 +1,138 @@
-// script.js — MULTILINGUAL FINAL COACH
+/* =========================
+   Don Diego Coach – Clean, Readable Style
+   ========================= */
 
-const AI_URL = "https://loops-ai-coach.seansynge.workers.dev/api/correct";
-
-// ------------------
-// GUARDRAIL: verb presence by language
-// ------------------
-function hasVerbLikeWord(text, lang) {
-  const t = text.toLowerCase();
-  if (lang === "es") return /\b(es|está|son|soy|tiene|tengo|hay|va|vive|juega|come|trabaja|gusta|gustas)\b/i.test(t);
-  if (lang === "fr") return /\b(est|a|suis|es|sommes|êtes|sont|aime|joue|vit)\b/i.test(t);
-  if (lang === "de") return /\b(ist|hat|bin|bist|sind|habt|spielt|lebt|mag)\b/i.test(t);
-  if (lang === "ga") return /\b(tá|is|táim|tá tú|tá sé|tá sí|táimid)\b/i.test(t);
-  return false;
+* {
+  box-sizing: border-box;
 }
 
-// ------------------
-// MULTILINGUAL TURBO HINTS
-// ------------------
-function nextStep(label, answer, lang) {
-  const a = answer.toLowerCase();
-  
-  // Spanish
-  if (lang === "es") {
-    if (label === "Missing verb") return "Add a verb — try **es** (he is) or **tiene** (he has).";
-    if (label === "Task relevance") return "Describe the person — try **es + adjective**.";
-    if (label === "Agreement") return "Match the adjective — **alto → alta**, **simpático → simpática**.";
-    if (label === "Verb form") {
-      if (a.includes("gustas")) return "Use **gusta** (he likes), not **gustas**.";
-      if (a.includes("eres")) return "Use **es** (he is), not **eres** (you are).";
-      return "Check verb ending — is it he/she or you?";
-    }
-    if (label === "Word order") return "Start with **Mi amigo es…**";
-    return "Polish it — add accents if you can.";
-  }
-
-  // French
-  if (lang === "fr") {
-    if (label === "Missing verb") return "Add a verb — try **est** (he is) or **a** (he has).";
-    if (label === "Task relevance") return "Describe the person — try **est + adjectif**.";
-    if (label === "Agreement") return "Match the adjective — **grand → grande**.";
-    if (label === "Verb form") return "Check the verb ending — il/elle vs tu.";
-    if (label === "Word order") return "Put the subject first, then the verb.";
-    return "Polish it — check accents and spelling.";
-  }
-
-  // German
-  if (lang === "de") {
-    if (label === "Missing verb") return "Add a verb — try **ist** (he is) or **hat** (he has).";
-    if (label === "Task relevance") return "Describe the person — try **ist + adjective**.";
-    if (label === "Agreement") return "Check adjective endings — make them match the noun.";
-    if (label === "Verb form") return "Check the verb ending — er vs du.";
-    if (label === "Word order") return "Put subject first: **Mein Freund ist…**";
-    return "Polish it — check spelling.";
-  }
-
-  // Gaeilge
-  if (lang === "ga") {
-    if (label === "Missing verb") return "Add a verb — try **tá sé…** (he is).";
-    if (label === "Task relevance") return "Describe the person — try **tá sé + adjective**.";
-    if (label === "Agreement") return "Match descriptors — make them fit the person.";
-    if (label === "Verb form") return "Check verb form — tá sé vs tá tú.";
-    if (label === "Word order") return "Try **Tá sé + adjective** at the start.";
-    return "Polish it — check spelling if relevant.";
-  }
-
-  return "";
+body {
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont,
+               "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: #f2f4f7;
+  color: #1f2937;
 }
 
-// ------------------
-// AI CLASSIFIER
-// ------------------
-async function classifyAnswer(payload) {
-  try {
-    const controller = new AbortController();
-    setTimeout(() => controller.abort(), 4000);
+/* ---------- Layout ---------- */
 
-    payload.instructions = `
-You are a Junior Cycle language examiner.
-
-Name if dominant:
-• Agreement
-• Verb form
-• Word order
-
-Otherwise use:
-• Task relevance
-• Accuracy
-
-Choose ONE focus only.
-Be decisive.
-Return JSON only in this format:
-{
-  verdict,
-  scores:{structure,relevance,accuracy},
-  label,
-  rationale
-}
-`;
-
-    const res = await fetch(AI_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    });
-
-    const text = await res.text();
-    if (!res.ok) throw new Error(text);
-    return JSON.parse(text);
-
-  } catch {
-    return {
-      verdict: "amber",
-      scores: { structure: 2, relevance: 1, accuracy: 1 },
-      label: "Task relevance",
-      rationale: "The sentence does not clearly describe the person."
-    };
-  }
+.wrap {
+  max-width: 720px;
+  margin: 40px auto;
+  padding: 24px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
 }
 
-// ------------------
-// COACH VOICE
-// ------------------
-function coachSpeak(total, label) {
-  if (total <= 3) return `Stop. Fix the ${label} and go again.`;
-  if (total <= 6) return `This scores, but the ${label} is holding it back.`;
-  return "Good. That scores. Push it to the top band.";
+h1 {
+  margin-top: 0;
+  margin-bottom: 6px;
+  font-size: 28px;
 }
 
-// ------------------
-// BUTTON WIRING
-// ------------------
-document.addEventListener("DOMContentLoaded", () => {
+.sub {
+  margin-top: 0;
+  margin-bottom: 24px;
+  color: #6b7280;
+  font-size: 15px;
+}
 
-  const runBtn = document.getElementById("runBtn");
-  const out = document.getElementById("out");
-  const answerBox = document.getElementById("answer");
+/* ---------- Form ---------- */
 
-  // Cursor-ready
-  answerBox.value = "";
-  answerBox.focus();
+label {
+  display: block;
+  margin-bottom: 18px;
+  font-weight: 600;
+  font-size: 15px;
+}
 
-  runBtn.onclick = async () => {
+textarea,
+select {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 12px 14px;
+  font-size: 18px;
+  line-height: 1.4;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-family: inherit;
+}
 
-    runBtn.disabled = true;
-    runBtn.innerText = "Thinking…";
+textarea {
+  min-height: 140px;
+  resize: vertical;
+}
 
-    const prompt = document.getElementById("prompt").value;
-    const answer = answerBox.value.trim();
-    const langCode = document.getElementById("lang").value;
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+}
 
-    // NO VERB
-    if (!hasVerbLikeWord(answer, langCode)) {
-      out.classList.remove("hidden");
-      out.innerHTML = `
-        <div class="score">Score: 0 / 10</div>
-        <div class="focus">Focus: Missing verb</div>
-        <div><strong>Do this:</strong><br>${nextStep("Missing verb", answer, langCode)}</div>
-      `;
-      runBtn.disabled = false;
-      runBtn.innerText = "Ask coach";
-      return;
-    }
+/* ---------- Button ---------- */
 
-    const language =
-      langCode === "es" ? "Spanish" :
-      langCode === "fr" ? "French" :
-      langCode === "de" ? "German" : "Gaeilge";
+button {
+  margin-top: 10px;
+  padding: 14px 22px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+  background: #2563eb;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.05s ease;
+}
 
-    const result = await classifyAnswer({
-      mode: "classifier",
-      language,
-      level: "Junior Cycle",
-      task: "short description",
-      prompt,
-      answer
-    });
+button:hover {
+  background: #1d4ed8;
+}
 
-    let s = result.scores;
-    let total = s.structure + s.relevance + s.accuracy;
+button:active {
+  transform: translateY(1px);
+}
 
-    // LOW-BAND CAP
-    if (s.relevance <= 1 && s.structure <= 2) {
-      total = Math.min(total, 4);
-    }
+button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
 
-    const hint = nextStep(result.label, answer, langCode);
+/* ---------- Feedback Card ---------- */
 
-    out.classList.remove("hidden");
-    out.innerHTML = `
-      <div class="score">Score: ${total} / 10</div>
-      <div class="focus">Focus: ${result.label}</div>
-      <div>${coachSpeak(total, result.label)}</div>
-      <div><br><strong>Do this:</strong><br>${hint}</div>
-      <div><br><em>${result.rationale}</em></div>
-    `;
+.card {
+  margin-top: 28px;
+  padding: 18px 20px;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  font-size: 16px;
+}
 
-    runBtn.disabled = false;
-    runBtn.innerText = "Ask coach";
-  };
-});
+.hidden {
+  display: none;
+}
+
+.score {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.focus {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+/* ---------- Subtle polish ---------- */
+
+em {
+  color: #4b5563;
+}
+
+strong {
+  font-weight: 700;
+}
