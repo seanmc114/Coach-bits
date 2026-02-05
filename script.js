@@ -1,4 +1,4 @@
-// script.js — FINAL JC COACH (CREDIBLE TURBO VERSION)
+// script.js — FINAL JC COACH (TRUSTED TURBO BUILD)
 
 const AI_URL = "https://loops-ai-coach.seansynge.workers.dev/api/correct";
 
@@ -6,21 +6,46 @@ const AI_URL = "https://loops-ai-coach.seansynge.workers.dev/api/correct";
 // MINIMAL HUMAN GUARDRAIL
 // ------------------------------
 function hasVerbLikeWord(text) {
-  return /\b(es|está|son|soy|eres|tiene|tengo|hay|va|vive|juega|come|trabaja|gusta)\b/i
+  return /\b(es|está|son|soy|eres|tiene|tengo|hay|va|vive|juega|come|trabaja|gusta|gustas)\b/i
     .test(text);
 }
 
 // ------------------------------
-// TURBO NEXT-STEP PLAYBOOK
+// SAFE, EARNED TURBO HINTS
 // ------------------------------
-const NEXT_STEP = {
-  "Missing verb": "Add a verb — try **es** (he is) or **tiene** (he has).",
-  "Task relevance": "Describe the person — try **es + adjective**.",
-  "Agreement": "Match the adjective — **alto → alta**, **simpático → simpática**.",
-  "Verb form": "Check the verb — use **gusta** (he likes), not **gustas**.",
-  "Word order": "Start with **Mi amigo es…**",
-  "Accuracy": "Now polish — add accents if you can."
-};
+function nextStep(label, answer) {
+  const a = answer.toLowerCase();
+
+  if (label === "Missing verb") {
+    return "Add a verb — try **es** (he is) or **tiene** (he has).";
+  }
+
+  if (label === "Task relevance") {
+    return "Describe the person — try **es + adjective**.";
+  }
+
+  if (label === "Agreement") {
+    return "Match the adjective — **alto → alta**, **simpático → simpática**.";
+  }
+
+  if (label === "Verb form") {
+    // Only be specific if the verb is actually there
+    if (a.includes("gustas")) {
+      return "Use **gusta** (he likes), not **gustas**.";
+    }
+    if (a.includes("eres")) {
+      return "Use **es** (he is), not **eres** (you are).";
+    }
+    return "Check the verb ending — is it **he/she** or **you**?";
+  }
+
+  if (label === "Word order") {
+    return "Start with **Mi amigo es…**";
+  }
+
+  // Accuracy (polish only)
+  return "Polish it — add accents if you can (e.g. **simpatico → simpático**).";
+}
 
 // ------------------------------
 // AI CLASSIFIER
@@ -32,10 +57,25 @@ async function classifyAnswer(payload) {
 
     payload.instructions = `
 You are a Junior Cycle language examiner.
-If the main issue is verb form (person/ending), label it "Verb form".
-If agreement is the issue, label it "Agreement".
-Choose ONE dominant focus.
-Return JSON only.
+
+Name these explicitly if dominant:
+• Agreement
+• Verb form
+• Word order
+
+Otherwise use:
+• Task relevance
+• Accuracy
+
+Choose ONE focus only.
+Be decisive.
+Return JSON only in this format:
+{
+  verdict,
+  scores:{structure,relevance,accuracy},
+  label,
+  rationale
+}
 `;
 
     const res = await fetch(AI_URL, {
@@ -53,8 +93,8 @@ Return JSON only.
     return {
       verdict: "amber",
       scores: { structure: 2, relevance: 1, accuracy: 1 },
-      label: "Verb form",
-      rationale: "Incorrect verb form."
+      label: "Task relevance",
+      rationale: "The sentence does not clearly describe the person."
     };
   }
 }
@@ -79,6 +119,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const runBtn = document.getElementById("runBtn");
   const out = document.getElementById("out");
+  const answerBox = document.getElementById("answer");
+
+  // Turbo start: cursor ready
+  answerBox.value = "";
+  answerBox.focus();
 
   runBtn.onclick = async () => {
 
@@ -86,14 +131,15 @@ document.addEventListener("DOMContentLoaded", () => {
     runBtn.innerText = "Thinking…";
 
     const prompt = document.getElementById("prompt").value;
-    const answer = document.getElementById("answer").value;
+    const answer = answerBox.value.trim();
 
+    // 🔴 HARD STOP: NO VERB
     if (!hasVerbLikeWord(answer)) {
       out.classList.remove("hidden");
       out.innerHTML = `
         <div class="score">Score: 0 / 10</div>
         <div class="focus">Focus: Missing verb</div>
-        <div><strong>Try this next:</strong><br>${NEXT_STEP["Missing verb"]}</div>
+        <div><strong>Do this:</strong><br>${nextStep("Missing verb", answer)}</div>
       `;
       runBtn.disabled = false;
       runBtn.innerText = "Ask coach";
@@ -105,18 +151,19 @@ document.addEventListener("DOMContentLoaded", () => {
     let s = result.scores;
     let total = s.structure + s.relevance + s.accuracy;
 
+    // 🔒 LOW-BAND CAP
     if (s.relevance <= 1 && s.structure <= 2) {
       total = Math.min(total, 4);
     }
 
-    const next = NEXT_STEP[result.label] || NEXT_STEP["Accuracy"];
+    const hint = nextStep(result.label, answer);
 
     out.classList.remove("hidden");
     out.innerHTML = `
       <div class="score">Score: ${total} / 10</div>
       <div class="focus">Focus: ${result.label}</div>
       <div>${coachSpeak(total, result.label)}</div>
-      <div><br><strong>Do this:</strong><br>${next}</div>
+      <div><br><strong>Do this:</strong><br>${hint}</div>
       <div><br><em>${result.rationale}</em></div>
     `;
 
