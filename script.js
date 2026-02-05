@@ -1,50 +1,32 @@
-// script.js — FINAL JC COACH (TRUSTED TURBO BUILD)
+// script.js — FINAL JC COACH (RELEVANCE-SAFE)
 
 const AI_URL = "https://loops-ai-coach.seansynge.workers.dev/api/correct";
 
 // ------------------------------
 // MINIMAL HUMAN GUARDRAIL
 // ------------------------------
-function hasVerbLikeWord(text) {
-  return /\b(es|está|son|soy|eres|tiene|tengo|hay|va|vive|juega|come|trabaja|gusta|gustas)\b/i
-    .test(text);
+function hasVerbLikeWord(text, lang) {
+  const t = text.toLowerCase();
+  if (lang === "es") return /\b(es|está|son|tiene|hay|vive|juega|come|trabaja|gusta)\b/i.test(t);
+  if (lang === "fr") return /\b(est|a|sont|aime|joue|vit)\b/i.test(t);
+  if (lang === "de") return /\b(ist|hat|sind|spielt|lebt|mag)\b/i.test(t);
+  if (lang === "ga") return /\b(tá|is)\b/i.test(t);
+  return false;
 }
 
 // ------------------------------
-// SAFE, EARNED TURBO HINTS
+// EXTENSION DETECTOR (THE FIX)
 // ------------------------------
-function nextStep(label, answer) {
-  const a = answer.toLowerCase();
+function hasExtension(text) {
+  const t = text.toLowerCase();
+  let signals = 0;
 
-  if (label === "Missing verb") {
-    return "Add a verb — try **es** (he is) or **tiene** (he has).";
-  }
+  if (/[.!?]/.test(t)) signals++;                 // more than one sentence
+  if (/\b(y|et|und|agus)\b/.test(t)) signals++;   // connector
+  if ((t.match(/\b(es|está|tiene|est|a|ist|hat|tá)\b/g) || []).length >= 2)
+    signals++; // more than one verb
 
-  if (label === "Task relevance") {
-    return "Describe the person — try **es + adjective**.";
-  }
-
-  if (label === "Agreement") {
-    return "Match the adjective — **alto → alta**, **simpático → simpática**.";
-  }
-
-  if (label === "Verb form") {
-    // Only be specific if the verb is actually there
-    if (a.includes("gustas")) {
-      return "Use **gusta** (he likes), not **gustas**.";
-    }
-    if (a.includes("eres")) {
-      return "Use **es** (he is), not **eres** (you are).";
-    }
-    return "Check the verb ending — is it **he/she** or **you**?";
-  }
-
-  if (label === "Word order") {
-    return "Start with **Mi amigo es…**";
-  }
-
-  // Accuracy (polish only)
-  return "Polish it — add accents if you can (e.g. **simpatico → simpático**).";
+  return signals >= 2;
 }
 
 // ------------------------------
@@ -52,63 +34,28 @@ function nextStep(label, answer) {
 // ------------------------------
 async function classifyAnswer(payload) {
   try {
-    const controller = new AbortController();
-    setTimeout(() => controller.abort(), 4000);
-
-    payload.instructions = `
-You are a Junior Cycle language examiner.
-
-Name these explicitly if dominant:
-• Agreement
-• Verb form
-• Word order
-
-Otherwise use:
-• Task relevance
-• Accuracy
-
-Choose ONE focus only.
-Be decisive.
-Return JSON only in this format:
-{
-  verdict,
-  scores:{structure,relevance,accuracy},
-  label,
-  rationale
-}
-`;
-
     const res = await fetch(AI_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: controller.signal
+      body: JSON.stringify(payload)
     });
-
-    const text = await res.text();
-    if (!res.ok) throw new Error(text);
-    return JSON.parse(text);
-
+    return await res.json();
   } catch {
     return {
       verdict: "amber",
-      scores: { structure: 2, relevance: 1, accuracy: 1 },
-      label: "Task relevance",
-      rationale: "The sentence does not clearly describe the person."
+      scores: { structure: 3, relevance: 2, accuracy: 2 },
+      label: "Accuracy",
+      rationale: "Minor accuracy issues."
     };
   }
 }
 
 // ------------------------------
-// COACH VOICE (SCORE-AWARE)
+// COACH VOICE
 // ------------------------------
 function coachSpeak(total, label) {
-  if (total <= 3) {
-    return `Stop. Fix the ${label} and go again.`;
-  }
-  if (total <= 6) {
-    return `This scores, but the ${label} is holding it back.`;
-  }
+  if (total <= 3) return `Stop. Fix the ${label} and go again.`;
+  if (total <= 6) return `This scores, but the ${label} is holding it back.`;
   return "Good. That scores. Push it to the top band.";
 }
 
@@ -121,50 +68,51 @@ document.addEventListener("DOMContentLoaded", () => {
   const out = document.getElementById("out");
   const answerBox = document.getElementById("answer");
 
-  // Turbo start: cursor ready
   answerBox.value = "";
   answerBox.focus();
 
   runBtn.onclick = async () => {
 
-    runBtn.disabled = true;
-    runBtn.innerText = "Thinking…";
-
+    const lang = document.getElementById("lang").value;
     const prompt = document.getElementById("prompt").value;
     const answer = answerBox.value.trim();
 
-    // 🔴 HARD STOP: NO VERB
-    if (!hasVerbLikeWord(answer)) {
+    runBtn.disabled = true;
+    runBtn.innerText = "Thinking…";
+
+    if (!hasVerbLikeWord(answer, lang)) {
       out.classList.remove("hidden");
       out.innerHTML = `
         <div class="score">Score: 0 / 10</div>
         <div class="focus">Focus: Missing verb</div>
-        <div><strong>Do this:</strong><br>${nextStep("Missing verb", answer)}</div>
+        <div>Add a verb and try again.</div>
       `;
       runBtn.disabled = false;
       runBtn.innerText = "Ask coach";
       return;
     }
 
-    const result = await classifyAnswer({ prompt, answer });
+    const result = await classifyAnswer({ prompt, answer, language: lang });
 
     let s = result.scores;
+
+    // 🔒 RELEVANCE PROTECTION (THE IMPORTANT BIT)
+    if (hasExtension(answer)) {
+      s.relevance = Math.max(s.relevance, 2);
+    }
+
     let total = s.structure + s.relevance + s.accuracy;
 
-    // 🔒 LOW-BAND CAP
     if (s.relevance <= 1 && s.structure <= 2) {
       total = Math.min(total, 4);
     }
-
-    const hint = nextStep(result.label, answer);
 
     out.classList.remove("hidden");
     out.innerHTML = `
       <div class="score">Score: ${total} / 10</div>
       <div class="focus">Focus: ${result.label}</div>
       <div>${coachSpeak(total, result.label)}</div>
-      <div><br><strong>Do this:</strong><br>${hint}</div>
-      <div><br><em>${result.rationale}</em></div>
+      <div><em>${result.rationale}</em></div>
     `;
 
     runBtn.disabled = false;
