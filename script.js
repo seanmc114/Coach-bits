@@ -1,10 +1,9 @@
-// script.js — TURBO COACH (STABLE CLASSROOM VERSION)
+// script.js — TURBO COACH (JS-SAFE, CLASSROOM STABLE)
 
 // ==============================
 // CONFIG
 // ==============================
-const USE_AI_MIRROR = false; // set true later if you want AI mirror
-const AI_URL = "https://loops-ai-coach.seansynge.workers.dev/api/correct";
+const USE_AI_MIRROR = false;
 
 // ==============================
 // VERB ATTEMPT DETECTION
@@ -12,34 +11,15 @@ const AI_URL = "https://loops-ai-coach.seansynge.workers.dev/api/correct";
 function hasVerb(text, lang) {
   const t = text.toLowerCase();
 
-  // Spanish — allow ANY common present-tense attempt
   if (lang === "es")
-    return /\b(
-      es|está|eres|soy|somos|
-      tiene|tengo|
-      vive|vives|vivo|
-      gusta|gustas
-    )\b/x.test(t);
+    return /\b(es|está|eres|soy|somos|tiene|tengo|vive|vives|vivo|gusta|gustas)\b/.test(t);
 
-  // French — present tense attempts
   if (lang === "fr")
-    return /\b(
-      est|suis|es|
-      a|as|
-      habite|habites|
-      aime|aimes
-    )\b/x.test(t);
+    return /\b(est|suis|es|a|as|habite|habites|aime|aimes)\b/.test(t);
 
-  // German — present tense attempts
   if (lang === "de")
-    return /\b(
-      ist|bin|bist|
-      hat|habe|hast|
-      wohnt|wohnst|
-      mag|magst
-    )\b/x.test(t);
+    return /\b(ist|bin|bist|hat|habe|hast|wohnt|wohnst|mag|magst)\b/.test(t);
 
-  // Irish — present copula / bí
   if (lang === "ga")
     return /\b(tá|is|táim|táimid)\b/.test(t);
 
@@ -53,7 +33,7 @@ function hasExtension(text) {
   let s = 0;
   if (/\b(y|et|und|agus)\b/i.test(text)) s++;
   if (/[.!?]/.test(text)) s++;
-  if (text.split(" ").length >= 6) s++;
+  if (text.trim().split(/\s+/).length >= 6) s++;
   return s >= 2;
 }
 
@@ -79,7 +59,7 @@ function localCoach(answer, lang) {
       score: 5,
       focus: "Verb form / development",
       msg:
-        "Good attempt — now fix the verb form and add ONE more detail."
+        "Good attempt — fix the verb form and add ONE more detail."
     };
   }
 
