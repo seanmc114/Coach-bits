@@ -1,4 +1,4 @@
-// script.js — TURBO COACH vSTABLE (ALL LANGUAGES FIXED)
+// script.js — TURBO COACH vCALIBRATED (ALL LANGUAGES)
 
 // ==============================
 // VERB ATTEMPT DETECTION
@@ -22,18 +22,25 @@ function hasVerb(text, lang) {
 }
 
 // ==============================
-// BASIC STRUCTURE CHECKS
+// BASIC STRUCTURE
 // ==============================
 function wordCount(text) {
   return text.trim().split(/\s+/).length;
 }
 
-function hasExtension(text) {
-  let s = 0;
-  if (/\b(y|et|und|agus)\b/i.test(text)) s++;
-  if (/[.!?]/.test(text)) s++;
-  if (wordCount(text) >= 7) s++;
-  return s >= 2;
+function hasConnector(text) {
+  return /\b(y|et|und|agus|pero|mais|aber|porque|parce que|weil)\b/i.test(text);
+}
+
+function hasOpinion(text, lang) {
+  const t = text.toLowerCase();
+
+  if (lang === "es") return /\b(creo que|pienso que|me parece que|porque)\b/.test(t);
+  if (lang === "fr") return /\b(je pense que|à mon avis|parce que)\b/.test(t);
+  if (lang === "de") return /\b(ich denke|meiner meinung nach|weil)\b/.test(t);
+  if (lang === "ga") return /\b(sílim go|dar liom|mar go)\b/.test(t);
+
+  return false;
 }
 
 // ==============================
@@ -43,7 +50,7 @@ function localCoach(answer, lang) {
 
   const words = wordCount(answer);
 
-  // --- No verb at all ---
+  // --- No verb attempt ---
   if (!hasVerb(answer, lang)) {
     return {
       score: 0,
@@ -56,45 +63,53 @@ function localCoach(answer, lang) {
     };
   }
 
-  // --- Single word or fragment ---
-  if (words <= 2) {
+  // --- Fragment / single idea ---
+  if (words <= 3) {
     return {
       score: 2,
       focus: "Fragment",
-      msg: "That’s a start — now write a full sentence."
+      msg: "That’s a start — write a full sentence about the person."
     };
   }
 
-  // --- Sentence but thin / verb form issues ---
-  if (!hasExtension(answer)) {
-
-    let fix = "Fix the verb form and add ONE more detail.";
-
-    if (lang === "es") {
-      if (/\beres\b/i.test(answer)) fix = "Use **es** (he/she is), not **eres**.";
-      else if (/\bvives\b/i.test(answer)) fix = "Use **vive** (he lives), not **vives**.";
-      else if (/\bgustas\b/i.test(answer)) fix = "Use **le gusta**, not **gustas**.";
-    }
-
+  // --- Sentence but thin / unclear ---
+  if (!hasConnector(answer) && !hasOpinion(answer, lang)) {
     return {
       score: 5,
-      focus: "Verb form / development",
-      msg: fix
+      focus: "Development / word choice",
+      msg:
+        lang === "es"
+          ? "Add a clearer detail — e.g. **es alto**, **es simpático**, or explain it."
+          : lang === "fr"
+          ? "Add a clearer detail — e.g. **il est grand**, **il est sympa**."
+          : lang === "de"
+          ? "Add a clearer detail — e.g. **er ist groß**, **er ist nett**."
+          : "Add a clearer detail — describe appearance or personality."
     };
   }
 
-  // --- Developed but not top band ---
+  // --- Developed, but no opinion/reason ---
+  if (!hasOpinion(answer, lang)) {
+    return {
+      score: 7,
+      focus: "Development",
+      msg:
+        lang === "es"
+          ? "Good answer. Add an opinion — start with **Creo que…** or a reason with **porque…**."
+          : lang === "fr"
+          ? "Good answer. Add an opinion — start with **Je pense que…** or **parce que…**."
+          : lang === "de"
+          ? "Good answer. Add an opinion — start with **Ich denke, dass…** or **weil…**."
+          : "Good answer. Add an opinion — start with **Sílim go…**."
+    };
+  }
+
+  // --- Opinion / reason present (top band teaser) ---
   return {
-    score: 7,
-    focus: "Accuracy",
+    score: 8,
+    focus: "Quality",
     msg:
-      lang === "es"
-        ? "Good answer. Add an opinion — start with **Creo que…** or a reason with **porque…**."
-        : lang === "fr"
-        ? "Good answer. Add an opinion — start with **Je pense que…** or a reason with **parce que…**."
-        : lang === "de"
-        ? "Good answer. Add an opinion — start with **Ich denke, dass…** or a reason with **weil…**."
-        : "Good answer. Add an opinion — start with **Sílim go…**."
+      "Very good. Check accuracy and add one more specific detail to push it further."
   };
 }
 
