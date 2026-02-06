@@ -1,9 +1,4 @@
-// script.js — TURBO COACH (JS-SAFE, CLASSROOM STABLE)
-
-// ==============================
-// CONFIG
-// ==============================
-const USE_AI_MIRROR = false;
+// script.js — TURBO COACH (CLASSROOM SAFE, SPECIFIC HINTS)
 
 // ==============================
 // VERB ATTEMPT DETECTION
@@ -38,7 +33,7 @@ function hasExtension(text) {
 }
 
 // ==============================
-// LOCAL COACH (ALWAYS COACHES)
+// LOCAL COACH (SPECIFIC TURBO)
 // ==============================
 function localCoach(answer, lang) {
 
@@ -55,11 +50,19 @@ function localCoach(answer, lang) {
   }
 
   if (!hasExtension(answer)) {
+
+    let fix = "Fix the verb form and add ONE more detail.";
+
+    if (lang === "es") {
+      if (/\beres\b/i.test(answer)) fix = "Use **es** (he/she is), not **eres**.";
+      else if (/\bvives\b/i.test(answer)) fix = "Use **vive** (he lives), not **vives**.";
+      else if (/\bgustas\b/i.test(answer)) fix = "Use **le gusta** (he likes), not **gustas**.";
+    }
+
     return {
       score: 5,
-      focus: "Verb form / development",
-      msg:
-        "Good attempt — fix the verb form and add ONE more detail."
+      focus: "Verb form",
+      msg: "Good attempt — " + fix
     };
   }
 
