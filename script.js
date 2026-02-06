@@ -1,6 +1,6 @@
 // script.js — LOCAL + AI MIRROR (A/B TEST READY)
 
-const USE_AI_MIRROR = true; // ← toggle this
+const USE_AI_MIRROR = false; // ← toggle this
 const AI_URL = "https://loops-ai-coach.seansynge.workers.dev/api/correct";
 
 // ------------------------------
